@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TO Labour Hour Calculator</title>
+  <meta name="theme-color" content="#008080">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link href="bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f4f8; padding: 12px; color: #2c3e50; }
+    .card-mobile { background: white; border-radius: 16px; padding: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border-top: 5px solid #008080; }
+    .header-box { text-align: center; margin-bottom: 15px; }
+    .header-box h4 { font-weight: bold; color: #008080; margin: 0; }
+    .form-control, .form-select { font-size: 1.15rem; padding: 10px; border-radius: 8px; }
+    .form-control::placeholder { color: #b0bec5; font-weight: 300; }
+    .btn-add { background-color: #008080; color: white; font-weight: bold; font-size: 1.2rem; padding: 12px; width: 100%; border-radius: 10px; border: none; }
+    .btn-add:active { background-color: #006666; }
+    .btn-reset { background-color: #6c757d; color: white; font-weight: bold; padding: 10px; width: 100%; border-radius: 8px; border: none; margin-top: 15px; }
+    .total-box { background: linear-gradient(135deg, #008080, #004d4d); color: white; border-radius: 12px; padding: 15px; text-align: center; margin-top: 20px; }
+    .total-title { font-size: 1rem; opacity: 0.9; }
+    .total-value { font-size: 2.2rem; font-weight: bold; }
+    .table-custom { font-size: 0.95rem; margin-top: 15px; }
+    .table-custom th { background-color: #e6f4f1; color: #006666; }
+    .badge-lot { background-color: #fff3cd; color: #856404; font-size: 0.75rem; padding: 3px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <div class="card-mobile">
+    <!-- หัวข้อแอป -->
+    <div class="header-box">
+      <h4>🧪 TO Labour Hour</h4>
+      <small class="text-muted">เครื่องคิดเลขคำนวณเวลาผลิต (ใช้งานได้ Offline)</small>
+    </div>
+
+    <!-- ส่วนกรอกข้อมูลหลัก -->
+    <div class="mb-3">
+      <label class="form-label fw-bold">💊 ชื่อยา / ผลิตภัณฑ์</label>
+      <input type="text" id="productName" class="form-control" placeholder="เช่น Tovastin">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label fw-bold">📦 Lot No. / Batch No.</label>
+      <input type="text" id="lotNo" class="form-control" placeholder="เช่น B26001">
+    </div>
+
+    <hr>
+
+    <!-- ฟอร์มป้อนทีละขั้นตอน -->
+    <div class="mb-3">
+      <label class="form-label fw-bold">🏢 เลือกหน่วยงาน</label>
+      <select id="deptSelect" class="form-select" onchange="checkDeptMode()">
+        <option value="ชั่งยา" data-lot="true">ชั่งยา (คิดตาม Lot)</option>
+        <option value="ผสม" data-lot="false">ผสม</option>
+        <option value="ตอก" data-lot="false">ตอก</option>
+        <option value="ชั่งสี" data-lot="true">ชั่งสี (คิดตาม Lot)</option>
+        <option value="เคลือบ" data-lot="false">เคลือบ</option>
+        <option value="Blister" data-lot="false">Blister</option>
+        <option value="Printing" data-lot="false">Printing</option>
+        <option value="Cartoning" data-lot="false">Cartoning</option>
+      </select>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <label class="form-label fw-bold">⏱️ เริ่มเวลา</label>
+        <input type="number" step="0.01" id="startTime" class="form-control text-center" placeholder="เช่น 08.40">
+      </div>
+      <div class="col-6">
+        <label class="form-label fw-bold">🏁 เสร็จเวลา</label>
+        <input type="number" step="0.01" id="endTime" class="form-control text-center" placeholder="เช่น 09.00">
+      </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <label class="form-label fw-bold">👥 จำนวนคน</label>
+        <input type="number" step="1" id="peopleCount" class="form-control text-center" placeholder="คน">
+      </div>
+      <div class="col-6" id="lotBox">
+        <label class="form-label fw-bold">📦 จำนวน Lot</label>
+        <input type="number" step="1" id="lotCount" class="form-control text-center" placeholder="Lot">
+      </div>
+    </div>
+
+    <button type="button" onclick="addItem()" class="btn-add">➕ เพิ่มรายการนี้</button>
+
+    <!-- ตารางสรุปรายการ -->
+    <table class="table table-bordered table-custom text-center align-middle">
+      <thead>
+        <tr>
+          <th>หน่วยงาน</th>
+          <th>ระยะเวลา</th>
+          <th>คน/Lot</th>
+          <th>รวม (ชม.)</th>
+          <th>ลบ</th>
+        </tr>
+      </thead>
+      <tbody id="summaryBody">
+        <!-- รายการที่เพิ่มจะมาโชว์ตรงนี้ -->
+      </tbody>
+    </table>
+
+    <!-- สรุปผลรวมตัวโตๆ -->
+    <div class="total-box">
+      <div class="total-title">เวลารวมทั้งหมด (Grand Total)</div>
+      <div class="total-value" id="grandTotalDisplay">0.00 ชม.</div>
+    </div>
+
+    <button type="button" onclick="resetForm()" class="btn-reset">🔄 ล้างข้อมูล เริ่ม Lot ใหม่</button>
+  </div>
+
+  <script>
+    var itemsList = [];
+
+    // เช็คว่าหน่วยงานที่เลือกคิดตาม Lot หรือไม่
+    function checkDeptMode() {
+      var select = document.getElementById('deptSelect');
+      var selectedOption = select.options[select.selectedIndex];
+      var isLot = selectedOption.getAttribute('data-lot') === 'true';
+      document.getElementById('lotBox').style.display = isLot ? 'block' : 'none';
+    }
+
+    checkDeptMode(); // เรียกทำงานครั้งแรก
+
+    // แปลงเวลา HH.MM เป็นนาที
+    function timeToMins(valStr) {
+      if (!valStr || isNaN(valStr)) return null;
+      var num = parseFloat(valStr);
+      var hrs = Math.floor(num);
+      var mins = Math.round((num - hrs) * 100);
+      return (hrs * 60) + mins;
+    }
+
+    // แปลงนาทีเป็น HH.MM (ปัดเป็นนาทีเต็มก่อน เพื่อไม่ให้เกิดค่าแปลกๆ เช่น 2.60)
+    function minsToHHMM(totalMins) {
+      if (totalMins <= 0 || isNaN(totalMins)) return "0.00";
+      totalMins = Math.round(totalMins);
+      var hrs = Math.floor(totalMins / 60);
+      var mins = totalMins % 60;
+      return hrs + "." + (mins < 10 ? "0" : "") + mins;
+    }
+
+    // เพิ่มรายการลงตาราง
+    function addItem() {
+      var deptSelect = document.getElementById('deptSelect');
+      var deptName = deptSelect.value;
+      var isLot = deptSelect.options[deptSelect.selectedIndex].getAttribute('data-lot') === 'true';
+      
+      var startStr = document.getElementById('startTime').value;
+      var endStr = document.getElementById('endTime').value;
+      var people = parseFloat(document.getElementById('peopleCount').value) || 0;
+      var lot = parseFloat(document.getElementById('lotCount').value) || 0;
+
+      var startM = timeToMins(startStr);
+      var endM = timeToMins(endStr);
+
+      if (startM === null || endM === null) {
+        alert('กรุณากรอกทั้งเวลาเริ่มและเวลาเสร็จ');
+        return;
+      }
+
+      var durMins = endM - startM;
+      if (durMins < 0) durMins += 24 * 60; // ข้ามเที่ยงคืน
+
+      var rowResultMins = 0;
+      if (isLot) {
+        if (lot > 0) rowResultMins = (durMins * people) / lot;
+      } else {
+        rowResultMins = durMins * people;
+      }
+
+      // ปัดเป็นนาทีเต็มทุกรายการ เพื่อให้ Grand Total เท่ากับผลรวมของตัวเลขที่แสดงในตาราง
+      rowResultMins = Math.round(rowResultMins);
+
+      var newItem = {
+        dept: deptName,
+        durHHMM: minsToHHMM(durMins),
+        durMins: durMins,
+        people: people,
+        lot: isLot ? lot : '-',
+        isLot: isLot,
+        totalMins: rowResultMins,
+        totalHHMM: minsToHHMM(rowResultMins)
+      };
+
+      itemsList.push(newItem);
+      renderTable();
+
+      // เคลียร์ค่าในช่องเวลา
+      document.getElementById('startTime').value = '';
+      document.getElementById('endTime').value = '';
+      document.getElementById('peopleCount').value = '';
+      document.getElementById('lotCount').value = '';
+      document.getElementById('startTime').focus();
+    }
+
+    // วาดตารางสรุป
+    function renderTable() {
+      var tbody = document.getElementById('summaryBody');
+      tbody.innerHTML = '';
+
+      var grandTotalMins = 0;
+
+      itemsList.forEach(function(item, index) {
+        grandTotalMins += item.totalMins;
+
+        var tr = document.createElement('tr');
+        tr.innerHTML = 
+          '<td><b>' + item.dept + '</b>' + (item.isLot ? '<br><span class="badge-lot">คิดตาม Lot</span>' : '') + '</td>' +
+          '<td>' + item.durHHMM + '</td>' +
+          '<td>' + (item.isLot ? item.people + 'คน/' + item.lot + 'Lot' : item.people + ' คน') + '</td>' +
+          '<td class="fw-bold text-success">' + item.totalHHMM + '</td>' +
+          '<td><button class="btn btn-sm btn-outline-danger border-0" onclick="removeItem(' + index + ')">✕</button></td>';
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('grandTotalDisplay').innerText = minsToHHMM(grandTotalMins) + ' ชม.';
+    }
+
+    function removeItem(index) {
+      itemsList.splice(index, 1);
+      renderTable();
+    }
+
+    function resetForm() {
+      if (confirm('คุณต้องการเริ่ม Lot ใหม่ใช่หรือไม่?')) {
+        itemsList = [];
+        document.getElementById('productName').value = '';
+        document.getElementById('lotNo').value = '';
+        document.getElementById('startTime').value = '';
+        document.getElementById('endTime').value = '';
+        document.getElementById('peopleCount').value = '';
+        document.getElementById('lotCount').value = '';
+        renderTable();
+      }
+    }
+
+    // กด Enter เลื่อนช่องบนมือถือ
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var target = e.target;
+        if (target.tagName === 'INPUT' && target.type !== 'button') {
+          e.preventDefault();
+          var inputs = Array.from(document.querySelectorAll('input:not([disabled]):not([type="hidden"])'))
+            .filter(function(i) { return i.offsetParent !== null; });
+          var idx = inputs.indexOf(target);
+          if (idx !== -1 && idx < inputs.length - 1) {
+            inputs[idx + 1].focus();
+          } else if (idx === inputs.length - 1) {
+            addItem(); // ถ้า Enter ช่องสุดท้ายให้กดเพิ่มรายการทันที
+          }
+        }
+      }
+    });
+
+    // ลงทะเบียน service worker เพื่อให้ใช้งานแบบ offline ได้
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js');
+      });
+    }
+  </script>
+</body>
+</html>
